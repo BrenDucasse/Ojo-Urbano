@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "5433093493",
+    "firebase_url": "https://ojourbano-default-rtdb.firebaseio.com",
+    "project_id": "ojourbano",
+    "storage_bucket": "ojourbano.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:5433093493:android:0ce1cf7c8ae7715834373c",
+        "android_client_info": {
+          "package_name": "com.example.ojo_urbano"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "5433093493-59kdo9eps3s121c0qfppkd830c4745mg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.ojo_urbano",
+            "certificate_hash": "9100f6905bc524addc55c1592c53fe4490a68d24"
+          }
+        },
+        {
+          "client_id": "5433093493-gq48rrgehpm7v775h9ulvb8u8a963h7h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEfJbgWQzFNt6SkQCGPrwYF1GVVq2qLn4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "5433093493-gq48rrgehpm7v775h9ulvb8u8a963h7h.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "5433093493-jmppmap62if4lg1a795oqb7pjav600q1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.ojoUrbano"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
