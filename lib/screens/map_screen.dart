@@ -26,43 +26,36 @@ class _MapScreenState extends State<MapScreen> {
 
     final markers = snapshot.docs.map((doc) {
       final data = doc.data();
-      
+
       final lat = (data['lat'] as num).toDouble();
       final lng = (data['lng'] as num).toDouble();
-
-      if (lat == null || lng == null) return null;
-
-      //muestran por consola la ubicacion 
-      print("DOC: ${doc.id}");
-      print("LAT: ${data['lat']} - LNG: ${data['lng']}");
 
       return Marker(
         markerId: MarkerId(doc.id),
         position: LatLng(lat, lng),
-        //pines en el mapa.
+
         icon: data['tipo'] == 'Problema'
-          ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed)
-          : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-      
-       infoWindow: InfoWindow(
+            ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed)
+            : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+
+        infoWindow: InfoWindow(
           title: data['categoria'],
           snippet: data['descripcion'],
-        
         ),
       );
+    }).toSet();
 
-      print("TOTAL MARKERS: ${markers.length}");
- 
-    }).whereType<Marker>().toSet();
+    // ✅ AHORA SÍ
+    print("TOTAL MARKERS: ${markers.length}");
 
     setState(() {
       _markers = markers;
     });
-     
+
+    // centrar mapa
     if (_mapController != null && _markers.isNotEmpty) {
       _centrarMapa();
     }
-    
   }
   //centra el mapa
   void _centrarMapa() {
