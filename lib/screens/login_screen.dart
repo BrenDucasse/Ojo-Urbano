@@ -11,17 +11,19 @@ class LoginScreen extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: ElevatedButton(
-          onPressed: () async {
-            final user = await _authService.signInWithGoogle();
+         onPressed: () async {
+          final user = await _authService.signInWithGoogle();
 
-            if (user != null) {
-              print("✅ Login: ${user.email}");
+          if (!context.mounted) return; // 🔥 CLAVE
 
-              Navigator.pushReplacementNamed(context, '/home');
-            } else {
-              print("❌ Error en login");
-            }
-          },
+          if (user != null) {
+            print("✅ Login: ${user.email}");
+
+            Navigator.pushReplacementNamed(context, '/home');
+          } else {
+            print("❌ Error en login");
+          }
+        },
           child: Text("Continuar con Google"),
         ),
       ),

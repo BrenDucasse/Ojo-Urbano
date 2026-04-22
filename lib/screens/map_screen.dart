@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+
+import 'report_detail_screen.dart';
 
 class MapScreen extends StatefulWidget {
   @override
@@ -12,6 +15,8 @@ class _MapScreenState extends State<MapScreen> {
   Set<Marker> _markers = {};
 
   GoogleMapController? _mapController;
+  
+  LatLng? _currentPosition;
 
   @override
   void initState() {
@@ -42,6 +47,14 @@ class _MapScreenState extends State<MapScreen> {
           title: data['categoria'],
           snippet: data['descripcion'],
         ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ReportDetailScreen(data),
+            ),
+          );
+        },
       );
     }).toSet();
 
@@ -51,11 +64,6 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _markers = markers;
     });
-
-    // centrar mapa
-    if (_mapController != null && _markers.isNotEmpty) {
-      _centrarMapa();
-    }
   }
   //centra el mapa
   void _centrarMapa() {
@@ -81,6 +89,22 @@ class _MapScreenState extends State<MapScreen> {
     _mapController!.animateCamera(
       CameraUpdate.newLatLngBounds(bounds, 50),
     );
+    
+  }
+
+  //obtener la ubicación 
+  Future<void> _getUserLocation() async {
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    _currentPosition = LatLng(position.latitude, position.longitude);
+
+    if (_mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentPosition!, 15),
+      );
+    }
   }
 
   @override
@@ -89,20 +113,69 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: Text("Mapa de Reportes"),
       ),
-      body: GoogleMap(
+     body: Stack(
+        children: [
 
-        key: ValueKey(_markers.length), // 🔥 fuerza refresh
+          GoogleMap(
+            key: ValueKey(_markers.length),
+            initialCameraPosition: CameraPosition(
+              target: LatLng(-46.43, -67.52),
+              zoom: 13,
+            ),
+            markers: _markers,
+            onMapCreated: (controller) {
+              _mapController = controller;
+              _getUserLocation(); // 🔥 acá sí funciona
+            },
+          ),
 
-        initialCameraPosition: CameraPosition(
-          target: LatLng(-46.43, -67.52),
-          zoom: 13,
-        ),
+          // 🔥 REPORTES FLOTANTES
+          Positioned(
+            bottom: 20,
+            left: 10,
+            right: 10,
+            child: FutureBuilder<QuerySnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('reportes')
+                  .orderBy('fecha', descending: true)
+                  .limit(2)
+                  .get(),
+              builder: (context, snapshot) {
 
-        markers: _markers,
+                if (!snapshot.hasData) return SizedBox();
 
-        onMapCreated: (controller) {
-          _mapController = controller;
-        },
+                final docs = snapshot.data!.docs;
+
+                return Column(
+                  children: docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+
+                    return GestureDetector(
+                      onTap: () {
+                        final lat = (data['lat'] as num).toDouble();
+                        final lng = (data['lng'] as num).toDouble();
+
+                        _mapController?.animateCamera(
+                          CameraUpdate.newLatLngZoom(
+                            LatLng(lat, lng),
+                            17,
+                          ),
+                        );
+                      },
+                      child: Card(
+                        elevation: 5,
+                        child: ListTile(
+                          title: Text(data['categoria'] ?? ''),
+                          subtitle: Text(data['descripcion'] ?? ''),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
