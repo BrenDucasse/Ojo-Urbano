@@ -1,11 +1,12 @@
 import 'dart:io';
-import 'dart:ui';
+import 'dart:ui'; //  para blur
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:geolocator/geolocator.dart';
+
 
 class CreateReportScreen extends StatefulWidget {
   @override
@@ -17,47 +18,70 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   final FocusNode descripcionFocus = FocusNode();
   final FocusNode tipoFocus = FocusNode();
   final FocusNode categoriaFocus = FocusNode();
-
+  
   final TextEditingController descripcionController = TextEditingController();
 
   final user = FirebaseAuth.instance.currentUser;
 
+  // 📸 imagen
   File? _imageFile;
   final picker = ImagePicker();
 
+  // 🔥 estado
   bool _isLoading = false;
 
+  // 🧠 tipo y categorías dinámicas
   String tipo = 'Problema';
 
   List<String> categoriasProblema = [
-    'Baches','Corte de calle','Falta de alumbrado',
-    'Desagüe rebalsando','Roturas por viento','Otros'
+    'Baches',
+    'Corte de calle',
+    'Falta de alumbrado',
+    'Desagüe rebalsando',
+    'Roturas por viento',
+    'Otros'
   ];
 
   List<String> categoriasPositivas = [
-    'Arreglo de calles','Evento social','Nuevo alumbrado',
-    'Espacio verde','Embellecimiento','Otros'
+    'Arreglo de calles',
+    'Evento social',
+    'Nuevo alumbrado',
+    'Espacio verde',
+    'Embellecimiento',
+    'Otros'
   ];
 
   String categoriaSeleccionada = 'Baches';
 
+  // 🚨 urgencia
   bool esUrgente = false;
 
+  // 📸 seleccionar imagen
   Future<void> pickImage(ImageSource source) async {
     final picked = await picker.pickImage(source: source);
     if (picked != null) {
       setState(() => _imageFile = File(picked.path));
     }
   }
-
+  // 🚀 crear reporte
   Future<void> crearReporte() async {
-    setState(() => _isLoading = true);
+
+    final user = FirebaseAuth.instance.currentUser;
 
     try {
+      // 1️⃣ OBTENER UBICACIÓN (ACÁ)
       final position = await _getLocation();
+
+      print("📍 LAT: ${position.latitude}");
+      print("📍 LNG: ${position.longitude}");
+
+      // 2️⃣ crear doc vacío primero
       final docRef = FirebaseFirestore.instance.collection('reportes').doc();
+
+      // 3️⃣ subir imagen
       String? imageUrl = await uploadImage(docRef.id);
 
+      // 4️⃣ guardar TODO
       await docRef.set({
         'descripcion': descripcionController.text,
         'categoria': categoriaSeleccionada,
@@ -66,6 +90,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
         'userId': user?.uid,
         'userEmail': user?.email,
         'imagen': imageUrl ?? '',
+        // UBICACIÓN
         'lat': position.latitude,
         'lng': position.longitude,
       });
@@ -73,12 +98,10 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       Navigator.pop(context);
 
     } catch (e) {
-      print("Error: $e");
-    } finally {
-      setState(() => _isLoading = false);
+       print("Error: $e");
     }
   }
-
+    
   Future<String?> uploadImage(String reportId) async {
     try {
       if (_imageFile == null) return null;
@@ -89,6 +112,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           .child('$reportId.jpg');
 
       await ref.putFile(_imageFile!);
+
       return await ref.getDownloadURL();
 
     } catch (e) {
@@ -97,11 +121,19 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
     }
   }
 
+  // fijar la long y lat al reporte
   Future<Position> _getLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) throw Exception('GPS desactivado');
+    bool serviceEnabled;
+    LocationPermission permission;
 
-    LocationPermission permission = await Geolocator.checkPermission();
+    // GPS activado?
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('GPS desactivado');
+    }
+
+    // permisos
+    permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
@@ -110,14 +142,16 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       throw Exception('Permiso denegado permanentemente');
     }
 
+    // obtener ubicación
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
   }
-
+  //contenedor animado para inputs
   Widget inputContainer({required Widget child, required FocusNode focus}) {
     return AnimatedContainer(
       duration: Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
         boxShadow: focus.hasFocus
@@ -125,6 +159,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                 BoxShadow(
                   color: Colors.white.withOpacity(0.25),
                   blurRadius: 12,
+                  spreadRadius: 1,
                 )
               ]
             : [],
@@ -140,229 +175,264 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
     categoriaFocus.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Nuevo Reporte")),
+      appBar: AppBar(
+        title: Text("Nuevo Reporte"),
+      ),
 
       body: Stack(
         children: [
 
-          // 🌊 Fondo
+          // 🌊 FONDO GRADIENTE
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF0F4C5C), Color(0xFF00B4D8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
           ),
 
-          // 📱 Contenido
+          // 📱 CONTENIDO
           GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () => FocusScope.of(context).unfocus(),
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
             child: SafeArea(
-              child: AnimatedPadding(
-                duration: Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: SingleChildScrollView(
-                  physics: BouncingScrollPhysics(),
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-
-                      // 🧊 LOGO
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black26, blurRadius: 10),
-                          ],
-                        ),
-                        child: Image.asset('assets/logo.png', height: 70),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // 🔥 FRANJA LOGO FULL WIDTH
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                      color: Colors.white,
+                      child: Center(
+                        child: Image.asset('assets/logo.png', height: 50),
                       ),
+                    ),
 
-                      SizedBox(height: 15),
-
-                      // 🧊 CARD
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            padding: EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Column(
-                              children: [
-
-                                // 📸 Imagen
-                                GestureDetector(
-                                  onTap: () => pickImage(ImageSource.gallery),
-                                  child: Container(
-                                    height: 180,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(15),
-                                      color: Colors.white12,
-                                    ),
-                                    child: _imageFile != null
-                                        ? Image.file(_imageFile!, fit: BoxFit.cover)
-                                        : Icon(Icons.camera_alt, color: Colors.white70),
-                                  ),
+                    // 👇 ahora sí el padding para el resto
+                    Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          // 🧊 CARD
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Container(
+                                padding: EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
 
-                                SizedBox(height: 10),
-
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                child: Column(
                                   children: [
-                                    IconButton(
-                                      icon: Icon(Icons.photo, color: Colors.white),
-                                      onPressed: () => pickImage(ImageSource.gallery),
+
+                                    // 📸 FOTO
+                                    GestureDetector(
+                                      onTap: () => pickImage(ImageSource.gallery),
+                                      child: Container(
+                                        height: 180,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(15),
+                                          color: Colors.white12,
+                                        ),
+                                        child: _imageFile != null
+                                            ? Image.file(_imageFile!, fit: BoxFit.cover)
+                                            : Icon(Icons.camera_alt, color: Colors.white70),
+                                      ),
                                     ),
-                                    IconButton(
-                                      icon: Icon(Icons.camera_alt, color: Colors.white),
-                                      onPressed: () => pickImage(ImageSource.camera),
+
+                                    SizedBox(height: 10),
+
+                                    // BOTONES FOTO
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(Icons.photo, color: Colors.white),
+                                          onPressed: () => pickImage(ImageSource.gallery),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(Icons.camera_alt, color: Colors.white),
+                                          onPressed: () => pickImage(ImageSource.camera),
+                                        ),
+                                      ],
+                                    ),
+
+                                    SizedBox(height: 20),
+
+                                    // ✏️ DESCRIPCIÓN
+                                    inputContainer(
+                                      focus: descripcionFocus,
+                                      child: TextField(
+                                        focusNode: descripcionFocus,
+                                        controller: descripcionController,
+                                        maxLines: 3,
+                                        style: TextStyle(color: Colors.white),
+                                        decoration: InputDecoration(
+                                          labelText: "Descripción",
+                                          labelStyle: TextStyle(color: Colors.white70),
+                                          filled: true,
+                                          fillColor: Colors.white.withOpacity(0.08),
+                                          contentPadding: EdgeInsets.all(15),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(15),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(15),
+                                            borderSide: BorderSide(color: Colors.white, width: 1.5),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 20),
+
+                                    // 🔄 TIPO
+                                    inputContainer(
+                                      focus: tipoFocus,
+                                      child: DropdownButtonFormField<String>(
+                                        focusNode: tipoFocus,
+                                        value: tipo,
+                                        dropdownColor: Color(0xFF0F4C5C),
+                                        iconEnabledColor: Colors.white,
+                                        style: TextStyle(color: Colors.white),
+
+                                        items: ['Problema', 'Positivo']
+                                            .map((e) => DropdownMenuItem(
+                                                  value: e,
+                                                  child: Text(e, style: TextStyle(color: Colors.white)),
+                                                ))
+                                            .toList(),
+
+                                        onChanged: (value) {
+                                          setState(() {
+                                            tipo = value!;
+                                            categoriaSeleccionada = (tipo == 'Problema')
+                                                ? categoriasProblema.first
+                                                : categoriasPositivas.first;
+                                          });
+                                        },
+                                        
+                                        decoration: InputDecoration(
+                                          labelText: "Tipo",
+                                          labelStyle: TextStyle(color: Colors.white70),
+                                          filled: true,
+                                          fillColor: Colors.white.withOpacity(0.08),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 18),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(15),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(15),
+                                            borderSide: BorderSide(color: Colors.white, width: 1.5),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 20),
+
+                                    // 📂 CATEGORÍA DINÁMICA
+                                    inputContainer(
+                                      focus: categoriaFocus,
+                                      child: DropdownButtonFormField<String>(
+                                        focusNode: categoriaFocus,
+                                        value: categoriaSeleccionada,
+                                        dropdownColor: Color(0xFF0F4C5C),
+                                        iconEnabledColor: Colors.white,
+                                        style: TextStyle(color: Colors.white),
+
+                                        items: (tipo == 'Problema'
+                                                ? categoriasProblema
+                                                : categoriasPositivas)
+                                            .map((e) => DropdownMenuItem(
+                                                  value: e,
+                                                  child: Text(e, style: TextStyle(color: Colors.white)),
+                                                ))
+                                            .toList(),
+
+                                        onChanged: (value) {
+                                          setState(() => categoriaSeleccionada = value!);
+                                        },
+
+                                        decoration: InputDecoration(
+                                          labelText: "Categoría",
+                                          labelStyle: TextStyle(color: Colors.white70),
+                                          filled: true,
+                                          fillColor: Colors.white.withOpacity(0.08),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 18),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(15),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(15),
+                                            borderSide: BorderSide(color: Colors.white, width: 1.5),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 20),
+
+                                    // 🚨 URGENCIA
+                                    SwitchListTile(
+                                      value: esUrgente,
+                                      onChanged: (value) {
+                                        setState(() => esUrgente = value);
+                                      },
+                                      title: Text("Marcar como urgente 🚨",
+                                          style: TextStyle(color: Colors.white)),
+                                    ),
+
+                                    SizedBox(height: 25),
+
+                                    // 🚀 BOTÓN
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: crearReporte,
+                                        child: Text("Publicar reporte"),
+                                      ),
                                     ),
                                   ],
                                 ),
-
-                                SizedBox(height: 20),
-
-                                // ✏️ Descripción
-                                inputContainer(
-                                  focus: descripcionFocus,
-                                  child: TextField(
-                                    focusNode: descripcionFocus,
-                                    controller: descripcionController,
-                                    maxLines: 3,
-                                    style: TextStyle(color: Colors.white),
-                                    decoration: _inputDecoration("Descripción"),
-                                  ),
-                                ),
-
-                                SizedBox(height: 20),
-
-                                // 🔄 Tipo
-                                inputContainer(
-                                  focus: tipoFocus,
-                                  child: DropdownButtonFormField<String>(
-                                    focusNode: tipoFocus,
-                                    value: tipo,
-                                    dropdownColor: Color(0xFF0F4C5C),
-                                    style: TextStyle(color: Colors.white),
-                                    iconEnabledColor: Colors.white,
-                                    items: ['Problema', 'Positivo']
-                                        .map((e) => DropdownMenuItem(
-                                              value: e,
-                                              child: Text(e),
-                                            ))
-                                        .toList(),
-                                    onChanged: (value) {
-                                      setState(() {
-                                        tipo = value!;
-                                        categoriaSeleccionada =
-                                            tipo == 'Problema'
-                                                ? categoriasProblema.first
-                                                : categoriasPositivas.first;
-                                      });
-                                    },
-                                    decoration: _inputDecoration("Tipo"),
-                                  ),
-                                ),
-
-                                SizedBox(height: 20),
-
-                                // 📂 Categoría
-                                inputContainer(
-                                  focus: categoriaFocus,
-                                  child: DropdownButtonFormField<String>(
-                                    focusNode: categoriaFocus,
-                                    value: categoriaSeleccionada,
-                                    dropdownColor: Color(0xFF0F4C5C),
-                                    style: TextStyle(color: Colors.white),
-                                    iconEnabledColor: Colors.white,
-                                    items: (tipo == 'Problema'
-                                            ? categoriasProblema
-                                            : categoriasPositivas)
-                                        .map((e) => DropdownMenuItem(
-                                              value: e,
-                                              child: Text(e),
-                                            ))
-                                        .toList(),
-                                    onChanged: (value) {
-                                      setState(() => categoriaSeleccionada = value!);
-                                    },
-                                    decoration: _inputDecoration("Categoría"),
-                                  ),
-                                ),
-
-                                SizedBox(height: 20),
-
-                                SwitchListTile(
-                                  value: esUrgente,
-                                  onChanged: (v) => setState(() => esUrgente = v),
-                                  title: Text("Marcar como urgente 🚨",
-                                      style: TextStyle(color: Colors.white)),
-                                ),
-
-                                SizedBox(height: 20),
-
-                                ElevatedButton(
-                                  onPressed: crearReporte,
-                                  child: Text("Publicar reporte"),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-
-          // 🔥 LOADING
-          if (_isLoading)
+            // 🔥 LOADING
+            if (_isLoading)
             Positioned.fill(
               child: Container(
-                color: Colors.black54,
-                child: Center(child: CircularProgressIndicator()),
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white70),
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.08),
-      contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 18),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.white),
       ),
     );
   }
